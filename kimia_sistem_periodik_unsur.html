@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kimia — Sistem Periodik Unsur</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+:root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+body{font-family:Inter,system-ui,sans-serif;background:#070b14;color:#f1f5f9;user-select:none;overflow-x:hidden;
+background-image:radial-gradient(circle at 12% 18%,rgba(56,189,248,.13),transparent 45%),radial-gradient(circle at 88% 82%,rgba(16,185,129,.11),transparent 45%),radial-gradient(circle at 50% 50%,rgba(139,92,246,.07),transparent 60%)}
+.f{font-family:'Space Grotesk',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+.glass{background:rgba(15,23,42,.82);backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.16)}
+.neon{position:relative}
+.neon::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:conic-gradient(from var(--a),#38bdf8,#34d399,#fbbf24,#a78bfa,#38bdf8);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:rot 7s linear infinite;pointer-events:none}
+@keyframes rot{to{--a:360deg}}
+.grad{background:linear-gradient(90deg,#38bdf8,#34d399,#fbbf24,#38bdf8);background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sh 5s linear infinite}
+@keyframes sh{to{background-position:200%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fl{50%{transform:translateY(-8px)}}
+@keyframes pop{from{transform:scale(.96) translateY(10px);opacity:0}to{transform:none;opacity:1}}
+@keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes glow{50%{box-shadow:0 0 34px rgba(250,204,21,.65)}}
+.pop{animation:pop .38s cubic-bezier(.16,1,.3,1)}.shake{animation:shake .4s}.float{animation:fl 3.6s ease-in-out infinite}
+.wheel{transition:transform 4.2s cubic-bezier(.12,.75,.08,1)}
+.tile{transition:transform .15s,box-shadow .15s,opacity .2s}.tile:hover{transform:scale(1.16);z-index:10;box-shadow:0 0 18px currentColor}
+.opt{transition:.15s}.opt:not(:disabled):hover{transform:translateY(-2px);border-color:#38bdf8}
+button:disabled{opacity:.42;cursor:not-allowed}
+button:not(:disabled):active{transform:scale(.97)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#334155;border-radius:9px}
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+<canvas id="bg" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+<header class="relative z-20 glass border-x-0 border-t-0 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+  <div class="flex items-center gap-3 cursor-pointer" onclick="go(0)">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-emerald-400 flex items-center justify-center text-xl shadow-lg shadow-sky-500/30" style="animation:glow 3s infinite">⚛️</div>
+    <div>
+      <div class="f font-extrabold text-lg leading-none">Kimia<span class="text-sky-400"> Periodik</span></div>
+      <div class="text-[11px] text-slate-400 mt-0.5">Sistem Periodik Unsur • Interaktif</div>
+    </div>
+  </div>
+  <nav id="tabs" class="flex gap-1.5 overflow-x-auto max-w-full py-1"></nav>
+  <div class="flex items-center gap-2">
+    <button onclick="snd=!snd;this.textContent=snd?'🔊':'🔇'" title="Suara" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">🔊</button>
+    <button onclick="go(5)" class="px-4 h-10 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 f font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center gap-1.5">🏆 Arena Kuis</button>
+  </div>
+</header>
+
+<main class="relative z-10 flex-1 flex p-3 sm:p-5">
+  <div id="stage" class="neon w-full max-w-7xl mx-auto glass rounded-3xl p-4 sm:p-7 min-h-[560px] flex flex-col justify-center"></div>
+</main>
+
+<footer class="relative z-20 glass border-x-0 border-b-0 px-4 py-2.5 flex items-center justify-between">
+  <span id="ind" class="num px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-sky-300 text-xs font-semibold"></span>
+  <div class="flex gap-2">
+    <button id="bp" onclick="go(cur-1)" class="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm font-semibold">← Kembali</button>
+    <button id="bn" onclick="go(cur+1)" class="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 f font-bold text-sm">Lanjut →</button>
+  </div>
+</footer>
+
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md" onclick="if(event.target===this)closeM()">
+  <div id="mbox" class="pop w-full max-w-2xl glass rounded-3xl border border-sky-400/40 p-6 relative max-h-[92vh] overflow-y-auto"></div>
+</div>
+
+<script>
+/* ============ DATA 118 UNSUR (posisi, golongan, & kategori akurat) ============ */
+const NM="Hidrogen,Helium,Litium,Berilium,Boron,Karbon,Nitrogen,Oksigen,Fluorin,Neon,Natrium,Magnesium,Aluminium,Silikon,Fosfor,Belerang,Klorin,Argon,Kalium,Kalsium,Skandium,Titanium,Vanadium,Kromium,Mangan,Besi,Kobalt,Nikel,Tembaga,Seng,Galium,Germanium,Arsen,Selenium,Bromin,Kripton,Rubidium,Stronsium,Itrium,Zirkonium,Niobium,Molibdenum,Teknesium,Rutenium,Rodium,Paladium,Perak,Kadmium,Indium,Timah,Antimon,Telurium,Iodin,Xenon,Sesium,Barium,Lantanum,Serium,Praseodimium,Neodimium,Prometium,Samarium,Europium,Gadolinium,Terbium,Disprosium,Holmium,Erbium,Tulium,Iterbium,Lutesium,Hafnium,Tantalum,Wolfram,Renium,Osmium,Iridium,Platina,Emas,Raksa,Talium,Timbal,Bismut,Polonium,Astatin,Radon,Fransium,Radium,Aktinium,Torium,Protaktinium,Uranium,Neptunium,Plutonium,Amerisium,Kurium,Berkelium,Kalifornium,Einsteinium,Fermium,Mendelevium,Nobelium,Lawrensium,Ruterfordium,Dubnium,Seaborgium,Bohrium,Hasium,Meitnerium,Darmstadtium,Roentgenium,Kopernisium,Nihonium,Flerovium,Moskovium,Livermorium,Tenesin,Oganeson".split(',');
+const SY="H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(' ');
+const CAT={
+  alkali:['Logam Alkali','#fb7185'],
+  alkaline:['Alkali Tanah','#fbbf24'],
+  transition:['Logam Transisi','#38bdf8'],
+  post:['Pasca-Transisi','#818cf8'],
+  metalloid:['Metaloid','#34d399'],
+  nonmetal:['Non-Logam','#22d3ee'],
+  noble:['Gas Mulia','#c084fc'],
+  lanthanide:['Lantanida','#f472b6'],
+  actinide:['Aktinida','#fb923c']
+};
+const GOL_LABEL={1:'1 (IA)',2:'2 (IIA)',3:'3 (IIIB)',4:'4 (IVB)',5:'5 (VB)',6:'6 (VIB)',7:'7 (VIIB)',8:'8 (VIIIB)',9:'9 (VIIIB)',10:'10 (VIIIB)',11:'11 (IB)',12:'12 (IIB)',13:'13 (IIIA)',14:'14 (IVA)',15:'15 (VA)',16:'16 (VIA)',17:'17 (VIIA)',18:'18 (VIIIA)'};
+const inL=(z,a)=>a.includes(z);
+
+function el(z){
+  let c='transition';
+  if(inL(z,[2,10,18,36,54,86,118]))c='noble';
+  else if(inL(z,[3,11,19,37,55,87]))c='alkali';
+  else if(inL(z,[4,12,20,38,56,88]))c='alkaline';
+  else if(inL(z,[5,14,32,33,51,52,85,117]))c='metalloid';
+  else if(inL(z,[1,6,7,8,9,15,16,17,34,35,53]))c='nonmetal';
+  else if(z>=57&&z<=71)c='lanthanide';
+  else if(z>=89&&z<=103)c='actinide';
+  else if(inL(z,[13,31,49,50,81,82,83,84,113,114,115,116]))c='post';
+
+  let r,k;
+  if(z>=57&&z<=71){r=9;k=z-53}
+  else if(z>=89&&z<=103){r=10;k=z-85}
+  else if(z<=2){r=1;k=z==1?1:18}
+  else if(z<=10){r=2;k=z<=4?z-2:z+8}
+  else if(z<=18){r=3;k=z<=12?z-10:z}
+  else if(z<=36){r=4;k=z-18}
+  else if(z<=54){r=5;k=z-36}
+  else if(z<=86){r=6;k=z<=56?z-54:z-68}
+  else{r=7;k=z<=88?z-86:z-100}
+
+  const period=r>8?(r==9?6:7):r;
+  const ph=inL(z,[1,2,7,8,9,10,17,18,36,54,86])?'Gas':inL(z,[35,80])?'Cair':z>=104?'Sintetis':'Padat';
+  return{z,sym:SY[z-1],name:NM[z-1],cat:c,r,k,period,ph,gol:r>8?'3 (IIIB)':GOL_LABEL[k]};
+}
+
+function shells(z){
+  const sub=[[1,2],[2,2],[2,6],[3,2],[3,6],[4,2],[3,10],[4,6],[5,2],[4,10],[5,6],[6,2],[4,14],[5,10],[6,6],[7,2],[5,14],[6,10],[7,6]];
+  const s=[0,0,0,0,0,0,0];let m=z;
+  for(const[n,c]of sub){if(m<=0)break;const p=Math.min(m,c);s[n-1]+=p;m-=p}
+  while(s.length>1&&!s[s.length-1])s.pop();
+  return s;
+}
+
+function atom(z,sz){
+  const sh=shells(z),n=sh.length,mn=sz*.15,mx=sz/2-6,st=n>1?(mx-mn)/(n-1):0;
+  return`<div class="relative flex items-center justify-center shrink-0" style="width:${sz}px;height:${sz}px">`+
+  sh.map((c,i)=>{
+    const r=mn+i*st;let d='';
+    for(let k=0;k<c;k++)d+=`<i style="position:absolute;inset:0;transform:rotate(${360/c*k}deg)"><b style="position:absolute;left:50%;top:-3.5px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 9px #38bdf8"></b></i>`;
+    return`<div style="position:absolute;width:${r*2}px;height:${r*2}px;border:1px solid rgba(56,189,248,.42);border-radius:50%;animation:spin ${6+i*2.5}s linear infinite${i%2?' reverse':''}">${d}</div>`;
+  }).join('')+
+  `<div class="relative z-10 rounded-full f font-extrabold text-slate-950 flex items-center justify-center text-[11px] leading-none" style="width:${Math.max(36,sz*.15)}px;height:${Math.max(36,sz*.15)}px;background:radial-gradient(#fde68a,#f43f5e);box-shadow:0 0 26px #f59e0b">${z}p⁺</div></div>`;
+}
+
+/* ============ AUDIO ============ */
+let snd=true,ac;
+function fx(t){if(!snd)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const n=ac.currentTime;
+  const tone=(f,s,d,ty='sine',v=.06)=>{const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.setValueAtTime(f,n+s);g.gain.setValueAtTime(v,n+s);g.gain.exponentialRampToValueAtTime(.001,n+s+d);o.connect(g);g.connect(ac.destination);o.start(n+s);o.stop(n+s+d)};
+  if(t=='click')tone(700,0,.05);else if(t=='tick')tone(380,0,.04,'triangle');else if(t=='ok')[523,659,784].forEach((f,i)=>tone(f,i*.08,.25,'triangle'));
+  else if(t=='bad'){tone(200,0,.25,'sawtooth',.07)}else if(t=='win')[523,659,784,1046,1318].forEach((f,i)=>tone(f,i*.09,.35,'triangle'))}catch(e){}}
+
+/* ============ NAVIGASI ============ */
+const TABS=[['🏠','Sampul'],['📜','Sejarah'],['🧪','Tabel 118'],['⚗️','Klasifikasi & Tren'],['🔬','Simulator Bohr'],['🏆','Arena Kuis']];
+let cur=0,sample=0,filt='all',simZ=11;
+function go(i){if(i<0||i>=TABS.length)return;fx('click');cur=i;draw()}
+function draw(){
+  $('#tabs').innerHTML=TABS.map((t,i)=>`<button onclick="go(${i})" class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 ${i==cur?'bg-sky-400 text-slate-950 shadow-md':'bg-slate-800/80 text-slate-400 hover:text-white'}"><span>${t[0]}</span><span class="hidden xl:inline">${t[1]}</span></button>`).join('');
+  $('#ind').textContent=`Slide ${cur+1} / ${TABS.length}`;
+  $('#bp').disabled=cur==0;$('#bn').disabled=cur==5;
+  const s=$('#stage');s.innerHTML=[sCover,sHist,sTable,sClass,sSim,sQuiz][cur]();s.classList.remove('pop');void s.offsetWidth;s.classList.add('pop');
+}
+const $=q=>document.querySelector(q);
+const hd=(k,t,c='sky')=>`<div class="border-b border-slate-800 pb-3 mb-4"><div class="text-xs font-bold uppercase tracking-widest text-${c}-400">${k}</div><h2 class="f text-2xl sm:text-3xl font-bold mt-0.5">${t}</h2></div>`;
+addEventListener('keydown',e=>{if(!$('#modal').classList.contains('hidden')){if(e.key=='Escape')closeM();return}if(e.key=='ArrowRight')go(cur+1);if(e.key=='ArrowLeft')go(cur-1)});
+
+/* ============ SLIDE 1: SAMPUL ============ */
+function sCover(){return`<div class="grid lg:grid-cols-12 gap-8 items-center">
+ <div class="lg:col-span-7 space-y-5 text-center lg:text-left">
+  <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/15 border border-sky-400/35 text-sky-300 text-xs font-semibold"><i class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></i>Media Pembelajaran Kimia Interaktif • 118 Unsur</span>
+  <h1 class="f text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">Kimia:<br><span class="grad">Sistem Periodik Unsur</span></h1>
+  <p class="text-slate-300 lg:text-lg max-w-2xl leading-relaxed">Pelajari keteraturan seluruh unsur kimia melalui tabel periodik interaktif 118 unsur, simulator atom Bohr, dan evaluasi kuis interaktif dengan analisis pemahaman materi di akhir.</p>
+  <div class="grid grid-cols-4 gap-2.5 max-w-md mx-auto lg:mx-0">
+    ${[['118','Unsur'],['7','Periode'],['18','Golongan'],['10','Misi Kuis']].map(x=>`<div class="rounded-2xl bg-slate-900/85 border border-slate-700 py-3 px-2 text-center flex flex-col items-center justify-center"><div class="f font-extrabold text-2xl text-sky-300 leading-none">${x[0]}</div><div class="text-[11px] text-slate-400 mt-1">${x[1]}</div></div>`).join('')}
+  </div>
+  <div class="flex flex-wrap gap-3 justify-center lg:justify-start">
+   <button onclick="go(1)" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 f font-bold shadow-xl shadow-sky-500/25">▶ Mulai Presentasi</button>
+   <button onclick="go(2)" class="px-5 py-3.5 rounded-2xl bg-slate-800 border border-sky-400/40 text-sky-300 f font-bold">🧪 Tabel 118 Unsur</button>
+   <button onclick="go(5)" class="px-5 py-3.5 rounded-2xl bg-slate-800 border border-amber-400/40 text-amber-300 f font-bold">🎮 Langsung Kuis</button>
+  </div></div>
+ <div class="lg:col-span-5 flex justify-center float"><div class="relative"><div class="absolute inset-6 rounded-full bg-sky-500/20 blur-3xl"></div>${atom(26,330)}</div></div></div>`}
+
+/* ============ SLIDE 2: SEJARAH ============ */
+function sHist(){
+ const H=[['1829','Triade Dobereiner','Tiga unsur mirip; massa unsur tengah ≈ rata-rata dua unsur tepi (Li, Na, K).','sky'],['1864','Oktaf Newlands','Unsur diurutkan menurut massa atom; sifat berulang pada unsur ke-8 seperti tangga nada.','emerald'],['1869','Dmitri Mendeleev','Tabel berdasar massa atom & kemiripan sifat; berhasil meramalkan unsur yang belum ditemukan.','amber'],['1913','Henry Moseley','Tabel modern berdasar kenaikan nomor atom (jumlah proton).','rose']];
+ const S=[6,26,79],e=el(S[sample]),col=CAT[e.cat][1];
+ return hd('Slide 02 • Sejarah & Anatomi','Perkembangan Tabel & Cara Membaca Kotak Unsur')+`<div class="grid lg:grid-cols-12 gap-6 items-center">
+ <div class="lg:col-span-6 relative pl-6 space-y-3"><div class="absolute left-2 top-2 bottom-2 w-0.5 bg-gradient-to-b from-sky-400 via-emerald-400 to-rose-400"></div>
+ ${H.map(h=>`<div class="relative p-4 rounded-2xl bg-slate-900/85 border border-slate-700 hover:border-${h[3]}-400 transition"><i class="absolute -left-[22px] top-5 w-3 h-3 rounded-full bg-${h[3]}-400 shadow-[0_0_10px] shadow-${h[3]}-400"></i><span class="num px-2 py-0.5 rounded bg-${h[3]}-500/20 text-${h[3]}-300 text-xs font-bold">${h[0]}</span><b class="ml-2 f">${h[1]}</b><p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${h[2]}</p></div>`).join('')}</div>
+ <div class="lg:col-span-6 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex flex-col items-center gap-4">
+  <div class="flex flex-wrap justify-center gap-2">${S.map((z,i)=>`<button onclick="sample=${i};fx('click');draw()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold border ${i==sample?'bg-sky-400 text-slate-950 border-sky-300':'bg-slate-800 text-slate-300 border-slate-700'}">${NM[z-1]} (${SY[z-1]})</button>`).join('')}</div>
+  <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 w-full max-w-md">
+    <div class="text-right text-xs font-bold space-y-12 text-sky-300"><div>Nomor Atom ──</div><div class="text-amber-300">Lambang ──</div></div>
+    <div class="float w-36 h-44 rounded-2xl p-3.5 flex flex-col justify-between border-2" style="border-color:${col};background:${col}1a;box-shadow:0 0 30px ${col}55">
+     <div class="flex items-center justify-between gap-1"><b class="f text-lg leading-none" style="color:${col}">${e.z}</b><span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 leading-none truncate">${CAT[e.cat][0]}</span></div>
+     <div class="f font-extrabold text-5xl text-center leading-none">${e.sym}</div>
+     <div class="text-center font-bold text-sm leading-tight">${e.name}</div>
+    </div>
+    <div class="text-left text-xs font-bold space-y-12 text-emerald-300"><div>── Nama Unsur</div><div class="text-rose-300">── P.${e.period} • G.${e.gol.split(' ')[0]}</div></div>
+  </div>
+  <p class="text-xs text-slate-400 text-center">Klik unsur lain untuk membandingkan. Konfigurasi kulit: <b class="num text-slate-200">${shells(e.z).join(', ')}</b>.</p></div></div>`}
+
+/* ============ SLIDE 3: TABEL 118 UNSUR RAPI & SIMETRIS ============ */
+function sTable(){
+ let h='';
+ for(let g=1;g<=18;g++){
+   h+=`<div style="grid-row:1;grid-column:${g+1}" class="num text-[10px] font-bold text-slate-400 text-center pb-1 flex items-center justify-center">${g}</div>`;
+ }
+ for(let p=1;p<=7;p++){
+   h+=`<div style="grid-row:${p+1};grid-column:1" class="num text-[10px] font-bold text-slate-400 flex items-center justify-center pr-1">${p}</div>`;
+ }
+ h+=`<div style="grid-row:10;grid-column:1 / span 3;color:${CAT.lanthanide[1]}" class="text-[10px] font-bold flex items-center justify-end pr-2">Lantanida</div>`;
+ h+=`<div style="grid-row:11;grid-column:1 / span 3;color:${CAT.actinide[1]}" class="text-[10px] font-bold flex items-center justify-end pr-2">Aktinida</div>`;
+
+ for(let z=1;z<=118;z++){
+  const e=el(z),c=CAT[e.cat][1],dim=filt!='all'&&filt!=e.cat;
+  h+=`<button onclick="openM(${z})" title="${z}. ${e.name}" class="tile rounded-md border px-0.5 py-1 flex flex-col items-center justify-between min-h-[48px] ${dim?'opacity-15':''}" style="grid-row:${e.r+1};grid-column:${e.k+1};color:${c};background:${c}1f;border-color:${c}88">
+   <span class="num text-[9px] font-bold leading-none opacity-85">${z}</span>
+   <span class="f font-extrabold text-sm leading-none text-white my-0.5">${e.sym}</span>
+   <span class="text-[8px] leading-none truncate w-full text-center px-0.5">${e.name}</span>
+  </button>`;
+ }
+ [[6,'lanthanide','57–71'],[7,'actinide','89–103']].forEach(x=>{
+  const c=CAT[x[1]][1];
+  h+=`<button onclick="setF('${x[1]}')" class="tile rounded-md border num text-[10px] font-bold flex items-center justify-center min-h-[48px] ${filt!='all'&&filt!=x[1]?'opacity-15':''}" style="grid-row:${x[0]+1};grid-column:4;color:${c};background:${c}1f;border-color:${c}88">${x[2]}</button>`;
+ });
+
+ return hd('Slide 03 • Tabel Periodik Lengkap','Klik Unsur Mana Pun untuk Melihat Atom Bohr-nya')+
+ `<div class="flex flex-wrap gap-1.5 mb-3">
+  <button onclick="setF('all')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border ${filt=='all'?'bg-white text-slate-950':'bg-slate-800 border-slate-600'}">Semua (118)</button>
+  ${Object.entries(CAT).map(([k,v])=>`<button onclick="setF('${k}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border" style="color:${v[1]};border-color:${v[1]}88;background:${filt==k?v[1]+'44':v[1]+'14'}">${v[0]}</button>`).join('')}
+ </div>
+ <div class="overflow-x-auto pb-2">
+  <div class="grid gap-[3px] min-w-[900px]" style="grid-template-columns:22px repeat(18,minmax(0,1fr));grid-template-rows:auto repeat(7,auto) 10px auto auto">${h}</div>
+ </div>`;
+}
+function setF(c){fx('click');filt=c;draw()}
+function openM(z){
+ fx('click');const e=el(z),c=CAT[e.cat][1],sh=shells(z),KL='KLMNOPQ';
+ $('#mbox').innerHTML=`<button onclick="closeM()" class="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-800 hover:bg-rose-500 flex items-center justify-center">✕</button><div class="grid md:grid-cols-12 gap-5 items-center">
+ <div class="md:col-span-5 flex flex-col items-center bg-slate-950/80 border border-slate-800 rounded-2xl p-4">${atom(z,210)}<span class="num text-xs text-sky-300 mt-2">Model Bohr • ${sh.length} kulit</span></div>
+ <div class="md:col-span-7 space-y-3"><div class="flex items-center gap-3"><div class="w-16 h-16 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0" style="color:${c};border-color:${c};background:${c}22"><span class="num text-[10px] font-bold">${z}</span><span class="f font-extrabold text-2xl leading-none">${e.sym}</span></div><div><span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-block" style="color:${c};border-color:${c}88">${CAT[e.cat][0]}</span><h3 class="f text-2xl font-bold mt-1">${e.name}</h3></div></div>
+ <div class="grid grid-cols-3 gap-2 text-center">${[['Periode',e.period,'sky'],['Golongan',e.gol,'emerald'],['Wujud (25°C)',e.ph,'amber']].map(x=>`<div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800"><div class="text-[10px] text-slate-400">${x[0]}</div><b class="num text-xs sm:text-sm text-${x[2]}-300">${x[1]}</b></div>`).join('')}</div>
+ <div class="p-3 rounded-xl bg-slate-900 border border-slate-800"><div class="text-xs font-semibold mb-1.5">Elektron per kulit</div><div class="flex flex-wrap gap-1.5">${sh.map((n,i)=>`<span class="num px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-400/40 text-xs font-bold text-sky-200">${KL[i]} = ${n}</span>`).join('')}</div></div>
+ <div class="flex gap-2"><button ${z<=1?'disabled':''} onclick="openM(${Math.max(1,z-1)})" class="flex-1 py-2 rounded-xl bg-slate-800 text-sm font-semibold">← ${z>1?SY[z-2]:'Awal'}</button><button ${z>=118?'disabled':''} onclick="openM(${Math.min(118,z+1)})" class="flex-1 py-2 rounded-xl bg-slate-800 text-sm font-semibold">${z<118?SY[z]:'Akhir'} →</button></div></div></div>`;
+ $('#modal').classList.replace('hidden','flex');
+}
+function closeM(){$('#modal').classList.replace('flex','hidden')}
+
+/* ============ SLIDE 4: KLASIFIKASI & TREN ============ */
+function sClass(){
+ const C=[['⚡','Logam (~78%)','Mengilap, konduktor panas & listrik, dapat ditempa. Melepas elektron → kation.','amber'],['💾','Metaloid','B, Si, Ge, As, Sb, Te, At. Semikonduktor: dasar prosesor & panel surya.','emerald'],['💨','Non-Logam','C, N, O, P, S, halogen, gas mulia. Isolator, rapuh. Menangkap elektron → anion.','sky']];
+ const T=[['Jari-Jari Atom','Makin besar','Makin kecil','rose'],['Energi Ionisasi','Makin kecil','Makin besar','sky'],['Afinitas Elektron','Makin kecil','Makin besar','emerald'],['Keelektronegatifan','Makin kecil','Makin besar (maks F)','amber']];
+ return hd('Slide 04 • Klasifikasi & Keperiodikan','Sifat Unsur dan Tren dalam Tabel Periodik','amber')+`<div class="grid lg:grid-cols-2 gap-5">
+ <div class="space-y-3">${C.map(c=>`<div class="p-4 rounded-2xl bg-slate-900/85 border border-${c[3]}-400/40 hover:scale-[1.01] transition flex items-start gap-3.5"><div class="text-3xl float shrink-0">${c[0]}</div><div><b class="text-${c[3]}-300">${c[1]}</b><p class="text-xs text-slate-300 mt-1 leading-relaxed">${c[2]}</p></div></div>`).join('')}</div>
+ <div class="grid sm:grid-cols-2 gap-3">${T.map(t=>`<div class="p-4 rounded-2xl bg-slate-900/85 border border-${t[3]}-400/40"><b class="text-${t[3]}-300 text-sm">${t[0]}</b><p class="text-xs text-slate-300 mt-2 leading-relaxed">↓ Atas → bawah: <b>${t[1]}</b><br>→ Kiri → kanan: <b>${t[2]}</b></p></div>`).join('')}
+ <div class="sm:col-span-2 p-4 rounded-2xl bg-slate-950/80 border border-slate-800"><div class="text-xs font-bold text-sky-300 mb-2">Jari-jari seperiode mengecil → Li, C, F</div><div class="flex items-end justify-around h-16">${[[3,50,'#fb7185'],[6,36,'#fbbf24'],[9,24,'#38bdf8']].map(x=>`<div class="flex flex-col items-center"><div class="rounded-full float" style="width:${x[1]}px;height:${x[1]}px;background:${x[2]}cc;box-shadow:0 0 14px ${x[2]}"></div><div class="text-[11px] font-bold mt-1.5">${SY[x[0]-1]}</div></div>`).join('')}</div></div></div></div>`}
+
+/* ============ SLIDE 5: SIMULATOR ============ */
+function sSim(){const e=el(simZ),c=CAT[e.cat][1],sh=shells(simZ);
+ return hd('Slide 05 • Simulator Atom Bohr (Z = 1–118)','Susun Kulit Elektron & Temukan Letak Unsurnya')+`<div class="grid lg:grid-cols-2 gap-6 items-center"><div class="space-y-4">
+ <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700 space-y-3"><div class="flex items-center justify-between"><b>Nomor Atom (Z)</b><div class="flex items-center gap-2"><button onclick="setZ(simZ-1)" class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-600 flex items-center justify-center font-bold">−</button><span class="w-14 text-center f font-extrabold text-3xl text-sky-400">${simZ}</span><button onclick="setZ(simZ+1)" class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-600 flex items-center justify-center font-bold">+</button></div></div>
+ <input type="range" min="1" max="118" value="${simZ}" oninput="setZ(+this.value,1)" class="w-full accent-sky-400"></div>
+ <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-700 space-y-3"><div class="flex items-center gap-3"><div class="w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0" style="color:${c};border-color:${c};background:${c}22"><span class="num text-[10px] font-bold">${e.z}</span><span class="f font-extrabold text-2xl leading-none">${e.sym}</span></div><div><h3 class="f text-xl font-bold">${e.name}</h3><span class="text-xs text-slate-400">${CAT[e.cat][0]} • ${e.ph}</span></div></div>
+ <div class="grid grid-cols-2 gap-2 text-center"><div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800"><div class="text-[11px] text-slate-400">Periode (jumlah kulit)</div><b class="num text-sky-300">${e.period}</b></div><div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800"><div class="text-[11px] text-slate-400">Golongan</div><b class="num text-emerald-300">${e.gol}</b></div></div>
+ <div class="flex flex-wrap gap-2">${sh.map((n,i)=>`<span class="num px-3 py-1 rounded-lg bg-sky-500/15 border border-sky-400/40 text-xs font-bold text-sky-200">${'KLMNOPQ'[i]} = ${n} e⁻</span>`).join('')}</div></div></div>
+ <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex flex-col items-center">${atom(simZ,300)}<span class="num text-xs text-sky-300 mt-2">[ ${sh.join(', ')} ]</span></div></div>`}
+function setZ(v,q){simZ=Math.max(1,Math.min(118,v));if(!q)fx('click');draw()}
+
+/* ============ KUIS ARENA (NAVIGASI 1-10 + WAJIB TERISI SEMUA + SKOR MAKS 100) ============ */
+const QS=[
+ {t:'c',cat:'Sejarah & Struktur Tabel',sl:1,tag:'Hukum Periodik Modern',q:'Ilmuwan yang menyusun sistem periodik modern berdasarkan kenaikan NOMOR ATOM adalah…',o:['Henry Moseley','Dmitri Mendeleev','Johann Dobereiner','John Newlands'],e:'Moseley (1913) membuktikan lewat spektrum sinar-X bahwa sifat unsur periodik terhadap nomor atom.'},
+ {t:'c',cat:'Sejarah & Struktur Tabel',sl:1,tag:'Struktur Tabel',q:'Lajur horizontal (periode) pada tabel periodik menunjukkan…',o:['Jumlah kulit elektron atom','Jumlah elektron valensi','Jumlah neutron inti','Massa jenis unsur'],e:'Nomor periode (1–7) = banyaknya kulit elektron yang terisi.'},
+ {t:'w',cat:'Golongan & Konfigurasi Elektron',sl:4,tag:'Roda Unsur',q:'Putar roda untuk mengunci unsur target, lalu jawab!',w:['Natrium (Na)','Neon (Ne)','Klorin (Cl)','Kalsium (Ca)'],g:0,sp:'Roda berhenti di NATRIUM (Z = 11). Pernyataan yang benar?',o:['Logam alkali (IA), 1 elektron valensi, sangat reaktif dengan air','Gas mulia (VIIIA), 8 elektron valensi, sangat stabil','Halogen (VIIA), gas hijau kekuningan','Metaloid (IVA), semikonduktor chip'],e:'Na (2, 8, 1): periode 3, golongan IA — logam alkali.'},
+ {t:'d',cat:'Klasifikasi & Sifat Keperiodikan',sl:3,tag:'Klasifikasi',q:'Seret/klik kartu ke kategori yang benar!',cards:[['Besi (Fe)',0],['Silikon (Si)',1],['Oksigen (O)',2]],z:['Logam','Metaloid','Non-Logam'],e:'Fe logam transisi, Si metaloid semikonduktor, O non-logam.'},
+ {t:'c',cat:'Golongan & Konfigurasi Elektron',sl:2,tag:'Keluarga Stabil',q:'He, Ne, dan Ar sukar bereaksi karena termasuk golongan…',o:['Gas Mulia (VIIIA/18)','Logam Alkali (IA)','Halogen (VIIA)','Alkali Tanah (IIA)'],e:'Gas mulia punya kulit terluar penuh (duplet He, oktet lainnya).'},
+ {t:'s',cat:'Golongan & Konfigurasi Elektron',sl:4,tag:'Rakit Kulit',q:'Susun elektron kulit K, L, M untuk KLORIN (Z = 17)!',tg:[2,8,7],e:'Klorin: K=2, L=8, M=7 (periode 3, golongan VIIA).'},
+ {t:'w',cat:'Klasifikasi & Sifat Keperiodikan',sl:3,tag:'Roda Tren',q:'Putar roda sifat keperiodikan, lalu pilih tren yang tepat!',w:['Jari-Jari Atom','Energi Ionisasi','Keelektronegatifan','Afinitas Elektron'],g:2,sp:'Roda mengunci KEELEKTRONEGATIFAN. Bagaimana trennya?',o:['Naik kiri → kanan dalam periode; terbesar pada Fluorin','Naik atas → bawah; terbesar pada Fransium','Selalu nol untuk halogen','Jarak inti ke elektron terluar'],e:'Keelektronegatifan naik ke kanan dalam periode dan turun ke bawah dalam golongan.'},
+ {t:'c',cat:'Klasifikasi & Sifat Keperiodikan',sl:3,tag:'Tren Ukuran Atom',q:'Dari Li → Na → K (atas ke bawah dalam golongan), jari-jari atom…',o:['Makin besar, kulit bertambah','Makin kecil, kulit berkurang','Tetap, valensi sama','Mengecil lalu hilang'],e:'Li 2 kulit, Na 3 kulit, K 4 kulit → jari-jari membesar.'},
+ {t:'d',cat:'Golongan & Konfigurasi Elektron',sl:2,tag:'Golongan',q:'Pasangkan unsur dengan nama golongannya!',cards:[['Magnesium (Mg)',0],['Bromin (Br)',1],['Argon (Ar)',2]],z:['Alkali Tanah (IIA)','Halogen (VIIA)','Gas Mulia (VIIIA)'],e:'Mg golongan IIA, Br golongan VIIA, Ar golongan VIIIA.'},
+ {t:'c',cat:'Golongan & Konfigurasi Elektron',sl:4,tag:'Konfigurasi 2, 8, 2',q:'Atom berkonfigurasi kulit 2, 8, 2 terletak pada…',o:['Periode 3, Golongan IIA (Magnesium)','Periode 2, Golongan IIIA (Boron)','Periode 3, Golongan VIIIA (Argon)','Periode 2, Golongan IIA (Berilium)'],e:'3 kulit = periode 3; 2 elektron valensi = golongan IIA → Mg (Z = 12).'}
+];
+const shuf=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+let Q;
+function resetQ(){
+  Q={i:0,res:[],spun:[],deg:[],spin:false,asg:[],pick:null,sh:QS.map(()=>[2,4,1]),done:false,started:false,warn:''};
+  QS.forEach(q=>{if(q.o)q.opts=shuf(q.o.map((t,i)=>({t,ok:i==0})))});
+}
+resetQ();
+
+function jumpQ(idx){
+  if(idx<0||idx>=QS.length||Q.spin)return;
+  fx('click');Q.i=idx;Q.pick=null;Q.warn='';draw();
+}
+
+function finishQuiz(){
+  const emptyIdx=QS.findIndex((_,k)=>!Q.res[k]);
+  if(emptyIdx!==-1){
+    fx('bad');
+    Q.i=emptyIdx;
+    Q.pick=null;
+    Q.warn=`Misi nomor ${emptyIdx+1} masih kosong! Harap isi semua nomor (1–10) sebelum mengumpulkan.`;
+    draw();
+    return;
+  }
+  Q.done=true;
+  fx('win');
+  if(Q.res.filter(r=>r.ok).length>=8)burst(180);
+  draw();
+}
+
+function sQuiz(){
+ if(!Q.started)return`<div class="text-center max-w-2xl mx-auto space-y-5"><div class="text-6xl float">🧬</div><h2 class="f text-4xl font-extrabold">Evaluasi <span class="grad">Kimia Periodik</span></h2><p class="text-slate-300 leading-relaxed">10 soal interaktif (masing-masing <b class="text-amber-300">10 poin</b>, nilai maksimal <b class="text-emerald-300">100</b>): pilihan ganda, roda putar, klasifikasi seret-lepas, dan merakit kulit elektron. Kamu bebas berpindah nomor <b>1–10</b> kapan saja, dan di akhir akan tampil <b>Evaluasi Pemahaman Materi</b> lengkap!</p><button onclick="Q.started=true;fx('click');draw()" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 f font-extrabold text-lg shadow-xl shadow-amber-500/30" style="animation:glow 2s infinite">🚀 Mulai Evaluasi</button></div>`;
+ if(Q.done)return sResult();
+ const i=Q.i,q=QS[i],r=Q.res[i],answeredCount=Q.res.filter(Boolean).length,score=Q.res.filter(x=>x&&x.ok).length*10,pct=(answeredCount/10)*100;
+
+ const hud=`<div class="flex flex-wrap items-center gap-3 mb-4">
+  <div class="flex-1 min-w-[180px]">
+    <div class="flex justify-between text-[11px] text-slate-400 mb-1"><span>Misi <b class="num text-slate-200">${i+1} / 10</b></span><span class="num">${answeredCount}/10 terisi</span></div>
+    <div class="h-2.5 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-400 transition-all duration-500" style="width:${pct}%"></div></div>
+  </div>
+  <div class="num px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-sm flex items-center gap-1.5">⭐ <b class="text-amber-300">${score}</b> <span class="text-xs text-slate-400">/ 100</span></div>
+  <button onclick="finishQuiz()" class="px-3.5 py-1.5 rounded-xl text-xs f font-bold border transition ${answeredCount===10?'bg-gradient-to-r from-emerald-400 to-sky-400 text-slate-950 border-emerald-300 shadow-lg shadow-emerald-500/20':'bg-slate-800 border-slate-600 text-slate-300 hover:border-amber-400'}">🏁 Selesai (${answeredCount}/10)</button>
+ </div>
+
+ <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+  <div class="flex gap-1.5 flex-wrap">
+    ${QS.map((_,k)=>{
+      const st=Q.res[k];
+      const base='w-8 h-8 rounded-lg inline-flex items-center justify-center f text-xs font-bold border leading-none transition cursor-pointer ';
+      const cls=st
+        ?(st.ok?'bg-emerald-500/25 border-emerald-400 text-emerald-200':'bg-rose-500/25 border-rose-400 text-rose-200')
+        :'bg-slate-900/80 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white';
+      const ring=k===i?' ring-2 ring-sky-400 ring-offset-1 ring-offset-slate-950 !text-white':'';
+      return`<button type="button" onclick="jumpQ(${k})" class="${base}${cls}${ring}">${k+1}</button>`;
+    }).join('')}
+  </div>
+  <div class="flex gap-1.5">
+    <button ${i===0?'disabled':''} onclick="jumpQ(${i-1})" class="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold">← Sebelumnya</button>
+    <button ${i===9?'disabled':''} onclick="jumpQ(${i+1})" class="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold">Lewati →</button>
+  </div>
+ </div>
+
+ ${Q.warn?`<div class="mb-4 p-3 rounded-xl bg-amber-500/15 border border-amber-400/50 text-amber-200 text-xs font-semibold flex items-center gap-2 shake">⚠️ <span>${Q.warn}</span></div>`:''}
+
+ <div class="p-4 rounded-2xl bg-slate-900/85 border border-slate-700 mb-4"><span class="px-2.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs font-bold">${q.tag}</span><h3 class="f text-lg sm:text-xl font-bold mt-2">${q.q}</h3></div>`;
+
+ let body='';
+ const choice=(opts)=>`<div class="grid md:grid-cols-2 gap-3">${opts.map((o,k)=>{let cl='bg-slate-900/90 border-slate-700';if(r){cl=o.ok?'bg-emerald-500/20 border-emerald-400':r.k==k?'bg-rose-500/20 border-rose-400 shake':'bg-slate-900/50 border-slate-800 opacity-60'}return`<button ${r?'disabled':''} onclick="lockC(${k})" class="opt p-4 rounded-2xl border text-left text-sm flex items-center gap-3 ${cl}"><span class="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center f font-bold leading-none shrink-0">${r&&o.ok?'✓':r&&r.k==k?'✕':'ABCD'[k]}</span><span>${o.t}</span></button>`}).join('')}</div>`;
+ if(q.t=='c')body=choice(q.opts);
+ if(q.t=='w'){const sp=Q.spun[i],c4=['#0e7490','#047857','#b45309','#9f1239'];
+  body=`<div class="grid lg:grid-cols-12 gap-5 items-center"><div class="lg:col-span-5 flex flex-col items-center bg-slate-950/80 border border-slate-800 rounded-2xl p-5">
+  <div class="relative w-60 h-60"><div class="absolute -top-3 left-1/2 -translate-x-1/2 z-20 text-3xl text-amber-400 drop-shadow-[0_0_8px_#fbbf24]">▼</div>
+  <div id="wheel" class="wheel absolute inset-0 rounded-full border-4 border-sky-300 shadow-[0_0_40px_rgba(56,189,248,.45)] overflow-hidden" style="transform:rotate(${Q.deg[i]||0}deg);background:conic-gradient(from -45deg,${c4[0]} 0 90deg,${c4[1]} 90deg 180deg,${c4[2]} 180deg 270deg,${c4[3]} 270deg 360deg)">
+   <div class="absolute top-4 inset-x-0 text-center text-xs font-bold px-8">${q.w[0]}</div><div class="absolute right-1 top-1/2 -translate-y-1/2 w-20 text-center text-xs font-bold">${q.w[1]}</div><div class="absolute bottom-4 inset-x-0 text-center text-xs font-bold px-8">${q.w[2]}</div><div class="absolute left-1 top-1/2 -translate-y-1/2 w-20 text-center text-xs font-bold">${q.w[3]}</div>
+   <div class="absolute inset-0 m-auto w-12 h-12 rounded-full bg-slate-900 border-2 border-sky-300 flex items-center justify-center">⚛️</div></div></div>
+  <button ${sp||Q.spin?'disabled':''} onclick="spinW()" class="mt-5 px-6 py-2.5 rounded-xl f font-bold ${sp?'bg-emerald-500/20 text-emerald-300 border border-emerald-400':'bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950'}">${sp?'🔒 Terkunci: '+q.w[q.g]:Q.spin?'Memutar…':'🎡 Putar Roda'}</button></div>
+  <div class="lg:col-span-7 space-y-3">${sp?`<div class="p-3 rounded-xl bg-sky-950/50 border border-sky-400/40 text-sm font-semibold text-sky-200 pop">${q.sp}</div>`+choice(q.opts).replace('md:grid-cols-2','grid-cols-1'):`<div class="p-8 rounded-2xl border border-dashed border-slate-700 text-center text-slate-400">Putar rodanya dulu untuk membuka pertanyaan 🎡</div>`}</div></div>`}
+ if(q.t=='d'){const a=Q.asg[i]||{},placed=Object.values(a).map(Number),pool=q.cards.map((c,k)=>k).filter(k=>!placed.includes(k));
+  body=`<div class="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 mb-3 flex flex-wrap gap-2.5 min-h-[56px] items-center">${pool.length?pool.map(k=>`<div draggable="${!r}" ondragstart="Q.pick=${k};event.dataTransfer.setData('text',${k})" onclick="Q.pick=Q.pick===${k}?null:${k};fx('click');draw()" class="px-4 py-2 rounded-xl f font-bold text-sm cursor-grab border ${Q.pick===k?'bg-sky-400 text-slate-950 border-white scale-105':'bg-slate-800 border-slate-600'}">⠿ ${q.cards[k][0]}</div>`).join(''):'<span class="text-emerald-400 text-sm font-semibold">✓ Semua kartu terpasang</span>'}</div>
+  <div class="grid md:grid-cols-3 gap-3">${q.z.map((zn,zi)=>{const ck=a[zi],ok=r&&ck!=null&&q.cards[ck][1]==zi;return`<div ondragover="event.preventDefault()" ondrop="putCard(${zi},event)" onclick="putCard(${zi})" class="p-4 rounded-2xl border-2 border-dashed min-h-[110px] cursor-pointer ${r?(ok?'border-emerald-400 bg-emerald-500/10':'border-rose-400 bg-rose-500/10'):ck!=null?'border-sky-400 bg-sky-950/40':'border-slate-700 bg-slate-900/70 hover:border-slate-500'}"><div class="f font-bold text-sky-300 text-sm">${zn}</div><div class="mt-3 text-sm font-bold">${ck!=null?q.cards[ck][0]+(r?'':' <span class="text-[11px] text-slate-400 font-normal">(klik lepas)</span>'):'<span class="text-slate-500 font-normal text-xs">Taruh kartu di sini</span>'}</div></div>`}).join('')}</div>
+  ${!r&&placed.length==3?`<div class="text-center mt-4"><button onclick="lockD()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 f font-bold">🔒 Kunci Jawaban</button></div>`:''}`}
+ if(q.t=='s'){const s=Q.sh[i],lb=['K (maks 2)','L (maks 8)','M (maks 18)'],cl=['#38bdf8','#34d399','#fbbf24'];
+  body=`<div class="grid lg:grid-cols-12 gap-5 items-center"><div class="lg:col-span-5 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col items-center"><div class="relative w-48 h-48 flex items-center justify-center">${[0,1,2].map(k=>`<div class="absolute rounded-full" style="width:${70+k*58}px;height:${70+k*58}px;border:2px solid ${cl[k]}88;box-shadow:0 0 12px ${cl[k]}44;${s[k]?'':'opacity:.3'}"></div>`).join('')}<div class="z-10 w-11 h-11 rounded-full flex items-center justify-center f font-extrabold text-xs text-slate-950 leading-none" style="background:radial-gradient(#fde68a,#f43f5e)">17p⁺</div></div><span class="num text-xs mt-2">Terpasang <b class="text-sky-300">${s[0]+s[1]+s[2]}</b> / 17 e⁻</span></div>
+  <div class="lg:col-span-7 space-y-2.5">${lb.map((l,k)=>`<div class="p-3 rounded-xl bg-slate-900/90 border border-slate-700 flex items-center justify-between"><b class="text-sm" style="color:${cl[k]}">Kulit ${l}</b><div class="flex items-center gap-3"><button ${r?'disabled':''} onclick="adj(${k},-1)" class="w-9 h-9 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-bold">−</button><span class="w-8 text-center f font-extrabold text-xl">${s[k]}</span><button ${r?'disabled':''} onclick="adj(${k},1)" class="w-9 h-9 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-bold">+</button></div></div>`).join('')}
+  ${r?'':`<button onclick="lockS()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 f font-bold">🔒 Kunci Jawaban</button>`}</div></div>`}
+ const fb=r?`<div class="mt-4 p-4 rounded-2xl pop border ${r.ok?'bg-emerald-950/40 border-emerald-500/50':'bg-rose-950/40 border-rose-500/50'} flex flex-wrap items-center justify-between gap-3"><div><b class="${r.ok?'text-emerald-300':'text-rose-300'}">${r.ok?'✅ Benar! +10 poin':'❌ Belum tepat (0 poin)'}</b><p class="text-xs text-slate-300 mt-1">${q.e}</p></div><button onclick="nextQ()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 f font-bold">${answeredCount===10?'🏁 Selesai & Lihat Nilai':'Misi Berikutnya →'}</button></div>`:'';
+ return hud+body+fb;
+}
+
+function lock(ok,k){const i=Q.i;Q.warn='';if(ok){fx('ok');burst(35)}else{fx('bad')}Q.res[i]={ok,k};draw()}
+function lockC(k){if(!Q.res[Q.i])lock(QS[Q.i].opts[k].ok,k)}
+function spinW(){const i=Q.i,q=QS[i];if(Q.spin||Q.spun[i])return;Q.spin=true;draw();const w=$('#wheel');void w.offsetWidth;
+ const d=2160+(360-q.g*90)%360;Q.deg[i]=d;w.style.transform=`rotate(${d}deg)`;let n=0;const iv=setInterval(()=>{fx('tick');if(++n>26)clearInterval(iv)},150);
+ setTimeout(()=>{Q.spin=false;Q.spun[i]=true;fx('ok');if(Q.i===i)draw()},4300)}
+function putCard(zi,ev){const i=Q.i;if(Q.res[i])return;const a={...(Q.asg[i]||{})};let c=ev?+ev.dataTransfer.getData('text'):Q.pick;if(ev){ev.preventDefault();if(isNaN(c))c=Q.pick}
+ if(c==null){if(a[zi]!=null){delete a[zi];fx('click')}}else{for(const k in a)if(a[k]==c)delete a[k];a[zi]=c;fx('click')}Q.asg[i]=a;Q.pick=null;draw()}
+function lockD(){const q=QS[Q.i],a=Q.asg[Q.i];lock(q.z.every((_,zi)=>q.cards[a[zi]][1]==zi))}
+function adj(k,d){fx('click');const i=Q.i;Q.sh[i][k]=Math.max(0,Math.min([2,8,18][k],Q.sh[i][k]+d));draw()}
+function lockS(){const i=Q.i,t=QS[i].tg;lock(Q.sh[i].every((v,k)=>v==t[k]))}
+function nextQ(){
+  fx('click');Q.pick=null;
+  const nextEmpty=QS.findIndex((_,k)=>k>Q.i&&!Q.res[k]);
+  if(nextEmpty!==-1){Q.i=nextEmpty;draw();return}
+  const anyEmpty=QS.findIndex((_,k)=>!Q.res[k]);
+  if(anyEmpty!==-1){Q.i=anyEmpty;draw();return}
+  finishQuiz();
+}
+function sResult(){
+ const ok=Q.res.filter(r=>r.ok).length,score=ok*10;
+ const rk=score>=90?['🏆 Sangat Menguasai (Predikat A)','text-amber-300']:score>=70?['⚗️ Menguasai Materi (Predikat B)','text-emerald-400']:score>=50?['🔬 Cukup Menguasai (Predikat C)','text-sky-400']:['🧪 Perlu Pendalaman Materi (Predikat D)','text-rose-400'];
+
+ // Rekap per kategori kompetensi kimia
+ const cats=[...new Set(QS.map(q=>q.cat))].map(cat=>{
+   const items=QS.map((q,idx)=>({q,idx,ok:Q.res[idx].ok})).filter(x=>x.q.cat===cat);
+   const ben=items.filter(x=>x.ok).length;
+   const pct=Math.round((ben/items.length)*100);
+   return{cat,ben,tot:items.length,pct,sl:items[0].q.sl};
+ });
+
+ const salah=QS.map((q,idx)=>({q,idx})).filter((_,idx)=>!Q.res[idx].ok);
+ const saran=score===100
+   ?'Luar biasa! Kamu menjawab seluruh 10 soal dengan tepat. Kamu sudah menguasai sejarah perkembangan tabel periodik, pengelompokan golongan & periode, tren sifat keperiodikan, hingga konfigurasi kulit elektron.'
+   :salah.length<=3
+   ?`Hasil yang sangat baik! Kamu hanya keliru pada ${salah.length} nomor (${salah.map(s=>'No. '+(s.idx+1)).join(', ')}). Tinjau kembali pembahasan di bawah dan coba simulasi pada slide terkait agar pemahamanmu sempurna.`
+   :`Kamu berhasil menjawab ${ok} dari 10 soal dengan benar. Disarankan untuk mengulang kembali materi terutama pada bagian ${cats.filter(c=>c.pct<70).map(c=>c.cat).join(' & ')} sebelum mencoba evaluasi ulang.`;
+
+ return`<div class="space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/90 border border-slate-700 rounded-2xl p-5">
+    <div class="flex items-center gap-4">
+      <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-sky-400 via-cyan-400 to-emerald-400 text-slate-950 flex flex-col items-center justify-center shadow-xl shrink-0" style="animation:glow 2.5s infinite">
+        <b class="f text-4xl leading-none">${score}</b>
+        <span class="text-[11px] font-extrabold mt-1">NILAI / 100</span>
+      </div>
+      <div>
+        <div class="f font-bold ${rk[1]}">${rk[0]}</div>
+        <h2 class="f text-2xl font-bold">Evaluasi Hasil Belajar Kimia</h2>
+        <p class="num text-sm text-slate-300 mt-0.5">Benar <b class="text-emerald-400">${ok}</b> • Salah <b class="text-rose-400">${10-ok}</b> dari 10 soal</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="resetQ();Q.started=true;fx('click');draw()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 f font-bold">🔄 Ulangi Kuis</button>
+      <button onclick="go(2)" class="px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-sm font-semibold">🧪 Tabel 118 Unsur</button>
+    </div>
+  </div>
+
+  <!-- Ringkasan Evaluasi Kompetensi per Topik -->
+  <div class="grid md:grid-cols-12 gap-4">
+    <div class="md:col-span-7 p-4 rounded-2xl bg-slate-900/85 border border-slate-700 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="f font-bold text-sm text-sky-300">📊 Analisis Penguasaan Kompetensi Kimia</h3>
+        <span class="text-[11px] text-slate-400">Per Topik Materi</span>
+      </div>
+      <div class="space-y-2.5">
+        ${cats.map(c=>`<div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-semibold text-slate-200">${c.cat}</span>
+            <span class="num font-bold ${c.pct>=80?'text-emerald-400':c.pct>=50?'text-amber-300':'text-rose-400'}">${c.ben}/${c.tot} (${c.pct}%)</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div class="h-full rounded-full ${c.pct>=80?'bg-emerald-400':c.pct>=50?'bg-amber-400':'bg-rose-400'}" style="width:${c.pct}%"></div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="md:col-span-5 p-4 rounded-2xl bg-slate-900/85 border border-slate-700 flex flex-col justify-between gap-3">
+      <div>
+        <h3 class="f font-bold text-sm text-amber-300">💡 Catatan & Rekomendasi Evaluasi</h3>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">${saran}</p>
+      </div>
+      ${salah.length?`<div class="flex flex-wrap gap-1.5 pt-1">
+        ${[...new Set(salah.map(s=>s.q.sl))].map(sl=>`<button onclick="go(${sl})" class="px-2.5 py-1.5 rounded-lg bg-sky-500/15 border border-sky-400/40 text-sky-300 text-[11px] font-semibold hover:bg-sky-500/25">📖 Pelajari Slide ${sl+1}: ${TABS[sl][1]} →</button>`).join('')}
+      </div>`:`<div class="text-xs text-emerald-300 font-semibold">✨ Semua kompetensi tercapai dengan sempurna!</div>`}
+    </div>
+  </div>
+
+  <!-- Pembahasan Detail Tiap Nomor -->
+  <div class="max-h-[240px] overflow-y-auto space-y-2 pr-1">
+    ${QS.map((q,k)=>`<div class="p-3 rounded-xl border text-sm ${Q.res[k].ok?'bg-emerald-950/30 border-emerald-500/40':'bg-rose-950/30 border-rose-500/40'}">
+      <div class="flex items-center justify-between gap-2">
+        <b class="num">${k+1}. ${q.q}</b>
+        <span class="num shrink-0 text-xs font-bold px-2 py-0.5 rounded ${Q.res[k].ok?'bg-emerald-500/20 text-emerald-300':'bg-rose-500/20 text-rose-300'}">${Q.res[k].ok?'✅ +10':'❌ 0'}</span>
+      </div>
+      <p class="text-xs text-slate-300 mt-1">${q.e}</p>
+    </div>`).join('')}
+  </div>
+ </div>`;
+}
+/* ============ LATAR PARTIKEL + KONFETI ============ */
+let conf=[];function burst(n){const p=['#38bdf8','#34d399','#fbbf24','#f472b6','#a78bfa'];for(let i=0;i<n;i++)conf.push({x:innerWidth/2+(Math.random()-.5)*300,y:innerHeight*.45,vx:(Math.random()-.5)*10,vy:-4-Math.random()*9,s:5+Math.random()*6,c:p[i%5],a:Math.random()*360})}
+(function(){const cv=$('#bg'),x=cv.getContext('2d');let nd=[];const rs=()=>{cv.width=innerWidth;cv.height=innerHeight};addEventListener('resize',rs);rs();
+ for(let i=0;i<26;i++)nd.push({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,s:i%3==0?SY[Math.floor(Math.random()*40)]:null});
+ (function L(){x.clearRect(0,0,cv.width,cv.height);nd.forEach((n,i)=>{n.x=(n.x+n.vx+cv.width)%cv.width;n.y=(n.y+n.vy+cv.height)%cv.height;
+  if(n.s){x.font='600 12px "Space Grotesk",sans-serif';x.fillStyle='rgba(56,189,248,.22)';x.fillText(n.s,n.x,n.y)}else{x.beginPath();x.arc(n.x,n.y,2.5,0,7);x.fillStyle='rgba(52,211,153,.25)';x.fill()}
+  for(let j=i+1;j<nd.length;j++){const d=Math.hypot(n.x-nd[j].x,n.y-nd[j].y);if(d<130){x.beginPath();x.moveTo(n.x,n.y);x.lineTo(nd[j].x,nd[j].y);x.strokeStyle=`rgba(148,163,184,${.09*(1-d/130)})`;x.stroke()}}});
+  conf.forEach(c=>{c.x+=c.vx;c.y+=c.vy;c.vy+=.28;c.a+=6;x.save();x.translate(c.x,c.y);x.rotate(c.a*Math.PI/180);x.fillStyle=c.c;x.fillRect(-c.s/2,-c.s/3,c.s,c.s*.6);x.restore()});
+  conf=conf.filter(c=>c.y<cv.height+30);requestAnimationFrame(L)})()})();
+draw();
+</script>
+</body>
+</html>
